@@ -1,0 +1,63 @@
+# Daily Crypto Signals — example configuration.
+#
+# Copy to config/signals.yaml (daily-signals init does this) and edit.
+# Secrets NEVER go in this file: the SMTP password is read from the
+# SIGNALS_SMTP_PASSWORD environment variable at send time.
+
+base_currency: USD
+
+# Capital share each asset receives when its stance is LONG.
+# Weights must sum to <= 1.0; the remainder stays in cash.
+assets:
+  - {symbol: BTC-USD, weight: 0.5}
+  - {symbol: ETH-USD, weight: 0.3}
+  - {symbol: SOL-USD, weight: 0.2}
+
+data:
+  source: coinbase          # coinbase | ccxt | fixture
+  ccxt_exchange: kraken     # fallback exchange when coinbase is unreachable
+  cache_dir: data/cache
+  min_history_days: 400
+
+# The transparent rule-based voices. weight controls each voice's share of
+# the ensemble vote; params are strategy-specific.
+strategies:
+  trend_sma:    {enabled: true, fast: 20, slow: 100, weight: 1.0}
+  momentum_roc: {enabled: true, lookback: 90, weight: 1.0}
+  meanrev_rsi:  {enabled: true, period: 14, enter_below: 30, exit_above: 55, weight: 0.5}
+
+# Optional RL voice (requires `pip install -e ".[rl]"` and a trained
+# checkpoint under models/<ASSET>/ — see docs/MVP.md). The pipeline runs
+# fine without it.
+rl:
+  enabled: false
+  models_dir: models
+  weight: 1.0
+
+ensemble:
+  long_threshold: 0.5       # score > threshold => LONG; a tie keeps yesterday's stance
+
+backtest:
+  start: "2019-01-01"
+  commission_bps: 15        # per side; covers fees + slippage
+  initial_cash: 100000
+
+portfolio:
+  initial_cash: 100000
+  commission_bps: 15
+
+report:
+  site_dir: reports/site
+  outbox_dir: reports/outbox
+  title: Daily Crypto Signals
+  site_url: ""              # e.g. https://<user>.github.io/<repo>/
+
+email:
+  enabled: false            # flip on once SMTP is configured
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  from_addr: you@example.com
+  username: ""              # defaults to from_addr
+  bcc: []                   # client addresses — kept out of headers
+  subject_prefix: "[Daily Signals]"
+  password_env: SIGNALS_SMTP_PASSWORD

@@ -41,8 +41,17 @@ setup(
     url='https://github.com/tensortrade-org/tensortrade',
     packages=[
         package for package in find_packages(exclude=('tests', 'docs'))
-        if package.startswith('tensortrade')
+        if package.startswith(('tensortrade', 'daily_signals'))
     ],
+    include_package_data=True,
+    package_data={
+        'daily_signals': ['report/templates/*.j2'],
+    },
+    entry_points={
+        'console_scripts': [
+            'daily-signals=daily_signals.cli:main',
+        ],
+    },
     license='Apache 2.0',
     python_requires='>=3.12',
     install_requires=[
@@ -62,6 +71,16 @@ setup(
     extras_require={
         'tests': [
             'pytest>=7.0.0',
+        ],
+        # Daily signals product (dependency-light pipeline; see daily_signals/)
+        'signals': [
+            'requests>=2.31.0',
+            'jinja2>=3.1.0',
+        ],
+        # Optional RL voice for the daily signals ensemble
+        'rl': [
+            'ray[rllib]==2.37.0',
+            'torch>=2.0.0',
         ],
         'docs': [
             'sphinx',
