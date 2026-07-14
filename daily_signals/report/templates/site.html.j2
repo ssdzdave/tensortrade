@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} — {{ as_of }}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: {{ colors.surface }};
+    --page: #f9f9f7;
+    --ink: {{ colors.ink }};
+    --ink-2: {{ colors.ink_secondary }};
+    --muted: {{ colors.muted }};
+    --grid: {{ colors.grid }};
+    --axis: {{ colors.axis }};
+    --accent: {{ colors.series1 }};
+    --good: #006300;
+    --bad: {{ colors.critical }};
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 4px; }
+  h1 { font-size: 22px; margin: 0; }
+  .asof { color: var(--ink-2); font-size: 14px; }
+  .stamp { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+  section { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+  h2 { font-size: 13px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; }
+  .long { color: var(--good); font-weight: 700; }
+  .flat { color: var(--ink-2); font-weight: 700; }
+  .chip { background: #fdf3e0; border-radius: 4px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+  .stale { background: #fdf3e0; border: 1px solid #eda100; border-radius: 8px; padding: 10px 14px; font-size: 14px; margin: 12px 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 8px; }
+  .tile { border: 1px solid var(--grid); border-radius: 8px; padding: 10px 12px; }
+  .tile .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  .tile .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .tile .sub { font-size: 12px; color: var(--ink-2); }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .chart { width: 100%; min-height: 320px; }
+  .scroll { overflow-x: auto; }
+  .rationale { color: var(--ink-2); font-size: 13px; }
+  .hl { background: #eef4fd; }
+  .bench td { color: var(--muted); }
+  footer { font-size: 12px; color: var(--muted); margin-top: 20px; }
+  .disclaimer { background: #f4f3f0; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: var(--ink-2); margin-top: 10px; }
+  a { color: var(--accent); }
+  .archive-list { font-size: 13px; columns: 3; }
+  @media (max-width: 640px) { .archive-list { columns: 2; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>{{ title }}</h1>
+    <span class="asof">signal for <strong>{{ as_of }}</strong> (UTC close)</span>
+    {% if is_archive %}<a href="{{ root_prefix }}index.html">&larr; latest report</a>{% endif %}
+  </header>
+  <div class="stamp">generated {{ generated }}{% if git_sha %} · rev {{ git_sha }}{% endif %}</div>
+
+  {% if stale %}
+  <div class="stale">&#9888;&#65039; <strong>STALE DATA</strong> — today's bars could not be fetched. Stances reflect the last good data; no new signal was recorded.</div>
+  {% endif %}
+
+  <section>
+    <h2>Today's stances</h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Asset</th><th>Stance</th><th>Close</th><th>Target weight</th><th>Vote</th></tr>
+      {% for row in stances %}
+      <tr>
+        <td><strong>{{ row.symbol }}</strong></td>
+        <td>
+          {% if row.is_long %}<span class="long">&#9650; LONG</span>{% else %}<span class="flat">&#9644; FLAT</span>{% endif %}
+          {% if row.changed %}<span class="chip">changed — was {{ row.prev }}</span>{% endif %}
+        </td>
+        <td class="num">{{ row.close }}</td>
+        <td class="num">{{ row.weight }}</td>
+        <td class="rationale">{{ row.vote }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>What each voice says</h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Asset</th><th>Voice</th><th>Stance</th><th>Weight</th><th>Why</th></tr>
+      {% for row in voices %}
+      <tr>
+        <td>{{ row.symbol }}</td>
+        <td>{{ row.voice }}</td>
+        <td>{% if not row.available %}<span class="flat">—</span>{% elif row.is_long %}<span class="long">LONG</span>{% else %}<span class="flat">FLAT</span>{% endif %}</td>
+        <td class="num">{{ row.weight }}</td>
+        <td class="rationale">{{ row.rationale }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+  </section>
+
+  {% if paper %}
+  <section>
+    <h2>Paper portfolio — live track record</h2>
+    <div class="tiles">
+      <div class="tile"><div class="label">NAV</div><div class="value num">{{ paper.nav }}</div><div class="sub">started {{ paper.initial }} on {{ paper.since }}</div></div>
+      <div class="tile"><div class="label">Total return</div><div class="value num {% if paper.total_return_positive %}pos{% else %}neg{% endif %}">{{ paper.total_return }}</div><div class="sub">{{ paper.days }} day{{ 's' if paper.days != 1 }} tracked</div></div>
+      <div class="tile"><div class="label">vs buy &amp; hold</div><div class="value num {% if paper.vs_bh_positive %}pos{% else %}neg{% endif %}">{{ paper.vs_bh }}</div><div class="sub">benchmark NAV {{ paper.bh_nav }}</div></div>
+      <div class="tile"><div class="label">Trades</div><div class="value num">{{ paper.num_trades }}</div><div class="sub">cash {{ paper.cash }}</div></div>
+    </div>
+    {% if charts.paper %}<div id="chart-paper" class="chart" role="img" aria-label="Line chart: paper portfolio NAV versus buy and hold NAV over time"></div>{% endif %}
+    {% if paper.positions %}
+    <div class="scroll">
+    <table>
+      <tr><th>Position</th><th>Quantity</th><th>Value</th></tr>
+      {% for p in paper.positions %}
+      <tr><td>{{ p.symbol }}</td><td class="num">{{ p.qty }}</td><td class="num">{{ p.value }}</td></tr>
+      {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+    {% if recent_trades %}
+    <h2 style="margin-top:16px;">Recent paper trades</h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Date</th><th>Asset</th><th>Side</th><th>Quantity</th><th>Fill</th><th>Fee</th></tr>
+      {% for t in recent_trades %}
+      <tr><td class="num">{{ t.date }}</td><td>{{ t.asset }}</td><td>{{ t.side }}</td><td class="num">{{ t.qty }}</td><td class="num">{{ t.price }}</td><td class="num">{{ t.fee }}</td></tr>
+      {% endfor %}
+    </table>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <section>
+    <h2>Backtest — since {{ backtest_start }}, {{ commission_bps|int }} bps/side commission</h2>
+    {% if headline %}
+    <div class="tiles">
+      <div class="tile"><div class="label">Portfolio CAGR</div><div class="value num">{{ headline.cagr }}</div></div>
+      <div class="tile"><div class="label">Sharpe</div><div class="value num">{{ headline.sharpe }}</div></div>
+      <div class="tile"><div class="label">Max drawdown</div><div class="value num">{{ headline.max_drawdown }}</div></div>
+      <div class="tile"><div class="label">vs buy &amp; hold</div><div class="value num">{{ headline.vs_buy_hold }}</div></div>
+    </div>
+    {% endif %}
+    {% if charts.backtest %}<div id="chart-backtest" class="chart" role="img" aria-label="Line chart: blended portfolio backtest equity versus buy and hold"></div>{% endif %}
+    <div class="scroll">
+    <table>
+      <tr><th>Asset</th><th>Voice</th><th>Total</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>Win rate</th><th>Trades/mo</th><th>vs B&amp;H</th></tr>
+      {% for row in tearsheet %}
+      <tr class="{% if row.is_ensemble %}hl{% elif row.is_benchmark %}bench{% endif %}">
+        <td>{{ row.asset }}</td>
+        <td>{{ row.voice }}</td>
+        <td class="num">{{ row.total_return }}</td>
+        <td class="num">{{ row.cagr }}</td>
+        <td class="num">{{ row.sharpe }}</td>
+        <td class="num">{{ row.max_drawdown }}</td>
+        <td class="num">{{ row.win_rate }}</td>
+        <td class="num">{{ row.trades_per_month }}</td>
+        <td class="num">{{ row.vs_buy_hold }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+    <p class="rationale" style="margin:10px 0 0;">Execution model: stances are decided on the UTC daily close and filled at that close (equivalent to the next open in a 24/7 market); every position change pays {{ commission_bps|int }} bps to cover fees and slippage. Highlighted rows are the shipped ensemble; grey rows are the buy-and-hold benchmark.</p>
+  </section>
+
+  {% if history %}
+  <section>
+    <h2>Signal history</h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Date</th>{% for s in asset_symbols %}<th>{{ s }}</th>{% endfor %}</tr>
+      {% for h in history %}
+      <tr><td class="num">{{ h.date }}</td>{% for s in h.stances %}<td class="{% if s == 'LONG' %}long{% else %}flat{% endif %}">{{ s }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if archive_names %}
+  <section>
+    <h2>Daily archive</h2>
+    <div class="archive-list">
+      {% for name in archive_names %}
+      <div><a href="archive/{{ name }}.html">{{ name }}</a></div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <footer>
+    Data: Coinbase public daily candles (UTC). Signals are stateful stances — “LONG” means hold the asset at its target weight until the stance changes.
+    <div class="disclaimer"><strong>Disclaimer.</strong> {{ disclaimer }}</div>
+  </footer>
+</div>
+
+{% if charts %}
+<script>
+  const chartConfig = {responsive: true, displayModeBar: false};
+  {% if charts.paper %}
+  const paperFig = {{ charts.paper | safe }};
+  Plotly.newPlot("chart-paper", paperFig.data, paperFig.layout, chartConfig);
+  {% endif %}
+  {% if charts.backtest %}
+  const backtestFig = {{ charts.backtest | safe }};
+  Plotly.newPlot("chart-backtest", backtestFig.data, backtestFig.layout, chartConfig);
+  {% endif %}
+</script>
+{% endif %}
+</body>
+</html>

@@ -214,6 +214,9 @@ def run_daily(cfg, dry_run: bool = False, resend: bool = False,
         return 0
     should_email = cfg.email.enabled and (not already_ran or resend)
     if not should_email and not dry_run:
+        if not cfg.email.enabled:
+            print("email disabled (email.enabled: false); "
+                  "use --dry-run to write an .eml to the outbox")
         return 0
 
     from daily_signals.emailer import send_email
