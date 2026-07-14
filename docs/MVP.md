@@ -145,9 +145,12 @@ Resend/SendGrid — it is one function.
 ## 7. The RL voice (optional differentiator)
 
 ```bash
-pip install -e ".[rl]"                                   # ray[rllib] + torch
+pip install -e ".[rl]"                                   # ray[rllib] + torch<2.5
 python -m daily_signals.rl.train_daily --asset BTC-USD   # ~10-20 min/asset
 ```
+
+(The torch cap matters: ray 2.37's RLlib segfaults under the much newer
+torch releases; torch 2.4.x is the verified pairing.)
 
 Training adapts the tuned pipeline from `examples/training/train_best.py`
 to daily bars from the same cache the signals use, and persists the best

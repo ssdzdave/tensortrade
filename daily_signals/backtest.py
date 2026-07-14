@@ -74,7 +74,8 @@ def voice_stance_frame(cfg, df: pd.DataFrame,
         weights[strategy.name] = strategy.weight
     if extra:
         for name, stances in extra.items():
-            series[name] = stances.reindex(indexed.index).fillna(0).astype(int)
+            # keep NaN outside the voice's coverage: absent from the vote there
+            series[name] = stances.reindex(indexed.index).astype(float)
             weights[name] = cfg.rl.weight
     return indexed, series, weights
 

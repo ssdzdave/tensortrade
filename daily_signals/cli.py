@@ -155,7 +155,11 @@ def run_daily(cfg, dry_run: bool = False, resend: bool = False,
     """
     from daily_signals.backtest import tearsheet
     from daily_signals.data.cache import load_all, refresh_all
-    from daily_signals.ensemble import combine_voices, compute_voices
+    from daily_signals.ensemble import (
+        combine_voices,
+        compute_voices,
+        rl_stance_series,
+    )
     from daily_signals.portfolio import update_paper_portfolio
     from daily_signals.report.render import render_reports
     from daily_signals.state import StateStore
@@ -195,7 +199,10 @@ def run_daily(cfg, dry_run: bool = False, resend: bool = False,
         print(f"signals for {as_of} already recorded; re-rendering only")
 
     # 3. Reports (always re-rendered so the site reflects the latest state).
-    sheet = tearsheet(cfg, data)
+    rl_series = rl_stance_series(cfg, data)
+    extra = ({s: {"rl_ppo": ser} for s, ser in rl_series.items()}
+             if rl_series else None)
+    sheet = tearsheet(cfg, data, extra_series=extra)
     artifacts = render_reports(
         cfg,
         as_of=as_of,

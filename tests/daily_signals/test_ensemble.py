@@ -89,6 +89,18 @@ class TestEnsembleSeries:
         with pytest.raises(ValueError):
             ensemble_series({"a": pd.Series([1, 0], index=idx)}, {"a": 0.0})
 
+    def test_nan_bars_mean_voice_absent(self):
+        """A voice with partial coverage (like the RL replay window) is
+        excluded from the vote outside its coverage, not counted as FLAT."""
+        idx = pd.date_range("2024-01-01", periods=4, freq="D")
+        rules = pd.Series([1, 1, 1, 0], index=idx)
+        partial = pd.Series([float("nan"), float("nan"), 0.0, 0.0], index=idx)
+        out = ensemble_series({"rules": rules, "rl": partial},
+                              {"rules": 1.0, "rl": 1.0})
+        # bars 0-1: only rules present -> LONG; bar 2: tie -> keeps LONG;
+        # bar 3: both flat -> FLAT
+        assert out.tolist() == [1, 1, 1, 0]
+
 
 def test_compute_voices_on_fixtures(fixture_config, no_network):
     from daily_signals.data.cache import load_all

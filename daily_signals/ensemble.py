@@ -79,22 +79,27 @@ def ensemble_series(voice_series: Dict[str, pd.Series],
     """Apply the same vote bar-by-bar over aligned stance histories.
 
     Used by the backtest so the tearsheet's "ensemble" row is produced by the
-    identical rule the daily signal uses.
+    identical rule the daily signal uses. NaN bars in a voice's series mean
+    "voice absent that day" — excluded from the denominator, exactly like an
+    unavailable voice in :func:`combine_voices` (the RL voice only covers its
+    replay window).
     """
     if not voice_series:
         raise ValueError("ensemble_series needs at least one voice")
-    frame = pd.DataFrame(voice_series)
+    frame = pd.DataFrame({k: s.astype(float) for k, s in voice_series.items()})
     weight_vector = pd.Series({name: weights[name] for name in frame.columns})
-    total = float(weight_vector.sum())
-    if total <= 0:
+    if float(weight_vector.sum()) <= 0:
         raise ValueError("ensemble weights must sum to > 0")
-    score = frame.mul(weight_vector, axis=1).sum(axis=1) / total
+    present = frame.notna()
+    weighted = frame.fillna(0.0).mul(weight_vector, axis=1).sum(axis=1)
+    denominator = present.mul(weight_vector, axis=1).sum(axis=1)
+    score = weighted / denominator.where(denominator > 0)
 
     values = np.empty(len(frame), dtype=int)
     prev = initial
-    long_mask = (score > long_threshold).to_numpy()
-    flat_mask = (score < long_threshold).to_numpy()
-    # ties are rare; a simple pass keeps the logic identical to combine_voices
+    long_mask = (score > long_threshold).fillna(False).to_numpy()
+    flat_mask = (score < long_threshold).fillna(False).to_numpy()
+    # ties (and all-absent bars) keep the previous stance, like combine_voices
     for i in range(len(frame)):
         if long_mask[i]:
             prev = 1
@@ -102,6 +107,29 @@ def ensemble_series(voice_series: Dict[str, pd.Series],
             prev = 0
         values[i] = prev
     return pd.Series(values, index=frame.index)
+
+
+def rl_stance_series(cfg, data: Dict[str, pd.DataFrame]
+                     ) -> Optional[Dict[str, pd.Series]]:
+    """Replayed RL stance history per asset for the tearsheet, or None when
+    the voice is disabled/unavailable. Failures never break the pipeline."""
+    if not cfg.rl.enabled:
+        return None
+    try:
+        from daily_signals.rl.voice import RLVoice
+
+        voice = RLVoice(cfg)
+    except Exception as exc:
+        print(f"warning: RL stance history unavailable: {exc}", file=sys.stderr)
+        return None
+    out: Dict[str, pd.Series] = {}
+    for asset in cfg.assets:
+        try:
+            out[asset.symbol] = voice.stance_series(asset.symbol, data[asset.symbol])
+        except Exception as exc:
+            print(f"warning: RL stance history failed for {asset.symbol}: {exc}",
+                  file=sys.stderr)
+    return out or None
 
 
 def compute_voices(cfg, data: Dict[str, pd.DataFrame]) -> Dict[str, List[Voice]]:

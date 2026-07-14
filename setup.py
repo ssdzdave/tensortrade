@@ -77,10 +77,12 @@ setup(
             'requests>=2.31.0',
             'jinja2>=3.1.0',
         ],
-        # Optional RL voice for the daily signals ensemble
+        # Optional RL voice for the daily signals ensemble.
+        # torch is capped: ray 2.37's RLlib segfaults with the much newer
+        # torch 2.10+ variant wheels; 2.4.x is the tested pairing.
         'rl': [
             'ray[rllib]==2.37.0',
-            'torch>=2.0.0',
+            'torch>=2.0.0,<2.5',
         ],
         'docs': [
             'sphinx',
