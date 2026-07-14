@@ -2,12 +2,11 @@
 https://www.cryptodatadownload.com.
 """
 
+import io
 import ssl
+import urllib.request
 
 import pandas as pd
-
-
-ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class CryptoDataDownload:
@@ -18,6 +17,10 @@ class CryptoDataDownload:
     ----------
     url : str
         The url for collecting data from CryptoDataDownload.
+    verify_ssl : bool
+        Whether to verify the server's TLS certificate. Scoped to this
+        instance — earlier versions disabled certificate verification
+        process-wide at import time.
 
     Methods
     -------
@@ -26,8 +29,15 @@ class CryptoDataDownload:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, verify_ssl: bool = True) -> None:
         self.url = "https://www.cryptodatadownload.com/cdd/"
+        self.verify_ssl = verify_ssl
+
+    def _read_csv(self, filename: str, **read_csv_kwargs) -> pd.DataFrame:
+        context = None if self.verify_ssl else ssl._create_unverified_context()
+        with urllib.request.urlopen(self.url + filename, context=context) as response:
+            payload = response.read()
+        return pd.read_csv(io.BytesIO(payload), **read_csv_kwargs)
 
     def fetch_default(self,
                       exchange_name: str,
@@ -63,7 +73,7 @@ class CryptoDataDownload:
         quote_vc = "Volume {}".format(quote_symbol)
         new_quote_vc = "volume_quote"
 
-        df = pd.read_csv(self.url + filename, skiprows=1)
+        df = self._read_csv(filename, skiprows=1)
         df = df[::-1]
         df = df.drop(["symbol"], axis=1)
         df = df.rename({base_vc: new_base_vc, quote_vc: new_quote_vc, "Date": "date"}, axis=1)
@@ -108,7 +118,7 @@ class CryptoDataDownload:
         if timeframe.endswith("h"):
             timeframe = timeframe[:-1] + "hr"
         filename = "{}_{}{}_{}.csv".format("gemini", quote_symbol, base_symbol, timeframe)
-        df = pd.read_csv(self.url + filename, skiprows=1)
+        df = self._read_csv(filename, skiprows=1)
         df = df[::-1]
         df = df.drop(["Symbol", "Unix Timestamp"], axis=1)
         df.columns = [name.lower() for name in df.columns]
