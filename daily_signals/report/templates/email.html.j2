@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} — {{ as_of }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f9f9f7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f7;padding:16px 0;">
+<tr><td align="center">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:{{ colors.surface }};border:1px solid {{ colors.grid }};border-radius:8px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:{{ colors.ink }};">
+
+  <tr><td style="padding:20px 24px 8px 24px;">
+    <div style="font-size:18px;font-weight:700;">{{ title }}</div>
+    <div style="font-size:13px;color:{{ colors.ink_secondary }};margin-top:2px;">
+      Daily signal for <strong>{{ as_of }}</strong> (UTC close)
+    </div>
+  </td></tr>
+
+  {% if stale %}
+  <tr><td style="padding:8px 24px;">
+    <div style="background:#fdf3e0;border:1px solid #eda100;border-radius:6px;padding:10px 12px;font-size:13px;color:{{ colors.ink }};">
+      &#9888;&#65039; <strong>STALE DATA</strong> — today's bars could not be fetched;
+      stances below reflect the last good data and no new signal was recorded.
+    </div>
+  </td></tr>
+  {% endif %}
+
+  <tr><td style="padding:12px 24px 4px 24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+      <tr style="color:{{ colors.muted }};font-size:11px;text-transform:uppercase;letter-spacing:.04em;">
+        <td style="padding:6px 8px;border-bottom:1px solid {{ colors.grid }};">Asset</td>
+        <td style="padding:6px 8px;border-bottom:1px solid {{ colors.grid }};">Stance</td>
+        <td style="padding:6px 8px;border-bottom:1px solid {{ colors.grid }};">Close</td>
+        <td style="padding:6px 8px;border-bottom:1px solid {{ colors.grid }};">Vote</td>
+      </tr>
+      {% for row in stances %}
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid {{ colors.grid }};font-weight:600;">{{ row.symbol }}</td>
+        <td style="padding:8px;border-bottom:1px solid {{ colors.grid }};">
+          {% if row.is_long %}
+          <span style="color:#006300;font-weight:700;">&#9650; LONG</span>
+          {% else %}
+          <span style="color:{{ colors.ink_secondary }};font-weight:700;">&#9644; FLAT</span>
+          {% endif %}
+          {% if row.changed %}
+          <span style="color:{{ colors.ink }};background:#fdf3e0;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;">changed — was {{ row.prev }}</span>
+          {% endif %}
+        </td>
+        <td style="padding:8px;border-bottom:1px solid {{ colors.grid }};font-variant-numeric:tabular-nums;">{{ row.close }}</td>
+        <td style="padding:8px;border-bottom:1px solid {{ colors.grid }};color:{{ colors.ink_secondary }};font-size:12px;">{{ row.vote }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </td></tr>
+
+  <tr><td style="padding:12px 24px 4px 24px;">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:{{ colors.muted }};margin-bottom:6px;">What each voice says</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:12px;">
+      {% for row in voices %}
+      <tr>
+        <td style="padding:5px 8px;border-bottom:1px solid {{ colors.grid }};white-space:nowrap;color:{{ colors.ink_secondary }};">{{ row.symbol }}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid {{ colors.grid }};white-space:nowrap;">{{ row.voice }}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid {{ colors.grid }};font-weight:700;{% if row.is_long %}color:#006300;{% else %}color:{{ colors.ink_secondary }};{% endif %}">{{ row.stance }}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid {{ colors.grid }};color:{{ colors.ink_secondary }};">{{ row.rationale }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </td></tr>
+
+  {% if paper %}
+  <tr><td style="padding:12px 24px 4px 24px;">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:{{ colors.muted }};margin-bottom:6px;">Paper portfolio (live track record)</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
+      <tr>
+        <td style="padding:4px 8px;">NAV <strong style="font-variant-numeric:tabular-nums;">{{ paper.nav }}</strong></td>
+        <td style="padding:4px 8px;">Since {{ paper.since }}:
+          <strong style="color:{% if paper.total_return_positive %}#006300{% else %}{{ colors.critical }}{% endif %};">{{ paper.total_return }}</strong>
+        </td>
+        <td style="padding:4px 8px;">vs buy&amp;hold:
+          <strong style="color:{% if paper.vs_bh_positive %}#006300{% else %}{{ colors.critical }}{% endif %};">{{ paper.vs_bh }}</strong>
+        </td>
+        <td style="padding:4px 8px;color:{{ colors.ink_secondary }};">{{ paper.days }} day{{ 's' if paper.days != 1 }}, {{ paper.num_trades }} trade{{ 's' if paper.num_trades != 1 }}</td>
+      </tr>
+    </table>
+  </td></tr>
+  {% endif %}
+
+  {% if has_chart %}
+  <tr><td style="padding:8px 24px;">
+    <img src="cid:equity_chart" alt="Equity curve: strategy vs buy and hold" width="592" style="width:100%;max-width:592px;border:1px solid {{ colors.grid }};border-radius:6px;">
+  </td></tr>
+  {% endif %}
+
+  {% if headline %}
+  <tr><td style="padding:8px 24px 4px 24px;">
+    <div style="font-size:12px;color:{{ colors.ink_secondary }};">
+      Backtest since {{ backtest_start }} (blended portfolio, {{ commission_bps|int }} bps/side):
+      CAGR <strong>{{ headline.cagr }}</strong> · Sharpe <strong>{{ headline.sharpe }}</strong> ·
+      max drawdown <strong>{{ headline.max_drawdown }}</strong> ·
+      vs buy&amp;hold <strong>{{ headline.vs_buy_hold }}</strong>
+    </div>
+  </td></tr>
+  {% endif %}
+
+  {% if site_url %}
+  <tr><td style="padding:10px 24px;">
+    <a href="{{ site_url }}" style="font-size:13px;color:{{ colors.series1 }};font-weight:600;">Full interactive report &rarr;</a>
+  </td></tr>
+  {% endif %}
+
+  <tr><td style="padding:12px 24px;">
+    <div style="border-top:1px solid {{ colors.grid }};padding-top:10px;font-size:11px;color:{{ colors.muted }};">
+      Data as of {{ as_of }} 00:00 UTC close · generated {{ generated }}{% if git_sha %} · rev {{ git_sha }}{% endif %}
+    </div>
+    <div style="margin-top:8px;background:#f4f3f0;border-radius:6px;padding:10px 12px;font-size:11px;line-height:1.5;color:{{ colors.ink_secondary }};">
+      <strong>Disclaimer.</strong> {{ disclaimer }}
+    </div>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `daily_signals/`: dependency-light daily trading-signals product layer
+  (data cache, strategy ensemble, paper-portfolio audit trail, email +
+  static web reports, GitHub Actions automation, optional RL voice). See
+  [docs/MVP.md](docs/MVP.md).
+
+### Security
+
+- `tensortrade.data.cdd` no longer disables TLS certificate verification
+  process-wide at import time. Verification is on by default and can be
+  disabled per instance via `CryptoDataDownload(verify_ssl=False)`.
+
 ## [1.0.4] - 2025-02-04
 
 ### Breaking Changes

@@ -30,6 +30,8 @@ Thumbs.db
 .mypy_cache/
 htmlcov/
 *.html
+# ...but the published daily-signals web reports ARE committed (audit trail)
+!reports/site/**/*.html
 
 # Virtual environments
 venv/
@@ -53,3 +55,9 @@ examples/training_logs/
 # Pipenv
 Pipfile
 Pipfile.lock
+
+# Daily signals product
+data/cache/
+models/*
+!models/.gitkeep
+reports/outbox/

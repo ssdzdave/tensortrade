@@ -28,6 +28,24 @@ pip install -r examples/requirements.txt
 python examples/training/train_simple.py
 ```
 
+## Daily Signals (product layer)
+
+`daily_signals/` is a dependency-light pipeline that turns this research
+framework into a daily trading brief: it fetches recent crypto daily bars,
+runs a transparent strategy ensemble (with the RL agent as an optional
+voice), tracks a paper portfolio as a git-committed audit trail, and
+delivers an HTML email plus a static web report — automated by a daily
+GitHub Actions workflow.
+
+```bash
+pip install -r daily_signals/requirements.txt   # no tensorflow/ray needed
+python -m daily_signals init                    # config + history + backtest
+python -m daily_signals run-daily --dry-run     # full pipeline, email to outbox
+```
+
+See **[docs/MVP.md](docs/MVP.md)** for the architecture, runbook, GitHub
+setup and how the forward track record works.
+
 ## Documentation & Tutorials
 
 📚 **[Tutorial Index](docs/tutorials/index.md)** — Start here for the complete learning curriculum.
